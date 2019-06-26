@@ -36,8 +36,6 @@ Boxplt_adjust_view <- function(y, dat, x){
   stopifnot(require(tidyverse))
   x <- enquo(x); y <- enquo(y)
   smldat <- dat %>% select(!!x, !!y) #x is always column 1 now.
-  p0 <- ggplot(smldat, aes(x = !!x, y = !!y)) +
-          geom_boxplot()
   ylim1 <- boxplot.stats(smldat[[2]])$stats[c(1,5)]  %>%
     {. + c(-0.05, 0.05)*diff(.)}
   ggplot(smldat, aes(x = !!x, y = !!y)) +
@@ -50,7 +48,7 @@ measures <- syms(names(TBP)[!grepl(pattern = "Plate", x = names(TBP))])
 plts <- lapply(X = measures, FUN = Boxplt_adjust_view, TBP, Plate)
 
 arrangedPlts <- marrangeGrob(plts, nrow=2, ncol=2)
-ggsave("./figures/zoomed_acrossPlates.pdf", arrangedPlts)
+ggsave("./figures/zoomed_acrossPlates_test.pdf", arrangedPlts)
 
 # Compare the differences in the predictor variables separating by cell Line.
 # Recall, each row is a different cell line, rows 2:3 are WT, rows 4:7 are mutant.
@@ -61,15 +59,30 @@ plts <- lapply(X = measures, FUN = function(x, dat, y){
                                             x <- enquo(x);y <- enquo(y)
                                             smldat <- dat %>% select(!!x, !!y)
                                             ggplot(smldat, aes(x = !!x, colour = !!y)) +
-                                              geom_histogram()}, TBP, mutant)
+                                              stat_density(geom='line')}, TBP, mutant)
 
 arrangedPlts <- marrangeGrob(plts, nrow=2, ncol=2)
 ggsave("./figures/mutant_distributions.pdf", arrangedPlts)
 
+# Zoom in on the plot to see the bulk of the data better.
+density_adj_view <- function(x, dat, grp, percentiles){
+  stopifnot(require(tidyverse))
+  x <- enquo(x); grp <- enquo(grp)
+  smldat <- dat %>% select(!!x, !!grp)
+  xlim <- smldat %>% select(!!x) %>%
+    summarise_all(list(~quantile(., probs = 0.01),
+                       ~quantile(., probs = 0.99)), na.rm = T) %>%
+    unlist(.[1,]) %>% {. + c(-0.05, 0.05)*diff(.)}
+  ggplot(smldat, aes(x = !!x, colour = !!grp)) +
+    stat_density(geom = 'line') + coord_cartesian(xlim = xlim)
+}
 
+TBP <- dat %>% mutate(mutant = Row > 3)
+measures <- syms(names(TBP)[!grepl(pattern = '(Plate)|(mutant)', x = names(TBP))])
+plts <- lapply(X = measures, FUN = density_adj_view, TBP, mutant, c(0.01, 0.99))
 
-
-
+arrangedPlts <- marrangeGrob(plts, nrow=2, ncol=2)
+ggsave("./figures/mutant_distributions_zoomed.pdf", arrangedPlts)
 
 
 

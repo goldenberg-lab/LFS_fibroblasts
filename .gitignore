@@ -5,5 +5,7 @@
 .Rproj
 
 data/
+figures/
 
 *.Rproj
+*.html
