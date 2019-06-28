@@ -89,14 +89,22 @@ ggsave("./figures/mutant_distributions_zoomed.pdf", arrangedPlts)
 
 
 
+# speed testing different row sorting methods.
+test <- expand.grid(measures_char, measures_char, stringsAsFactors = F)
 
+sort1 <- function(tib){
+  tib %>% mutate(first = if_else(Var1 <= Var2, Var1, Var2), second = if_else(Var1 > Var2, Var1, Var2)) %>%
+    select(Var1 = first, Var2 = second)
+}
+sort2 <- function(tib){
+  t(apply(tib, 1, sort))
+}
+library(microbenchmark)
+microbenchmark(sort1(test), sort2(test))
+all_equal(sort1(test), sort2(test) %>% as_tibble() %>% rename(Var1 = V1, Var2 = V2))
 
-
-
-
-
-
-
+test2 <- rnorm(100) %>% expand.grid(.,.)
+microbenchmark(sort1(test2), sort2(test2))
 
 
 

@@ -2,8 +2,10 @@
 title: "Preliminary Visualizations"
 author: "Jaryd Hunter"
 Date: "`r Sys.Date()`"
-output: html_document
-df_print: paged
+output: 
+    html_document:
+      code_folding: hide
+      df_print: paged
 ---
 This is the notbook form of the script Preliminary_Visualizations.R, I think in this form I can put these knitted html files on google drive and ideally this will give a better sense of what I have done than just a hodge podge of figures and text files.
 ```{r global_options, include=FALSE}
@@ -12,6 +14,7 @@ knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.path = '../figures/'
 library(tidyverse);library(cowplot);library(NMF)
 library(gridExtra);library(ggforce)
 source('../scripts/import_data.R')
+source('../scripts/Visualization_helpers.R')
 ```
 
 
@@ -27,7 +30,12 @@ Look at the correlation between all of the variables.
 
 ```{r correlation}
 cormat <- cor(dat %>% select_if(is.numeric), use = "na.or.complete")
-aheatmap(cormat, color = "-RdBu:100", breaks = 0)
+plt <- aheatmap(cormat, color = "-RdBu:100", breaks = 0, filename = '../figures/Allcorrelation.pdf')
+aheatmap(cormat, color = "-RdBu:100", breaks = 0) 
+# To plot the heatmap in a file and in the html presentation. aheatmap doesn't 
+# return the graphical object, it is generated and then send to a device (either
+# file or stdout) in a sub function heatmap_motor which returns NULL, so I'm not
+# sure how to go about intercepting the output to send to two locations.
 ```
 
 A few variables look very correlated, and below I extracted those that are equal
@@ -42,7 +50,8 @@ cormat %>%
 It's not obviously clear to me what these columns are, but keeping both does not increase the information in the dataset, so one of each pair should be dropped moving forward.
 
 Moving on, check for batch effects across the plates.
-```{r plate_batch_effect, include=FALSE, eval=FALSE}
+```{r plate_batch_effect, include = F, eval = F}
+# Without zooming
 TBP <- dat %>% select(-Row, -Column, -S, -M, -starts_with('Focus'), -DNA_Area, -Ab_Int_Nuc)
 measures <- syms(names(TBP)[!grepl(pattern = "Plate", x = names(TBP))])
 plts <- lapply(X = measures, FUN = function(y, dat, x){
@@ -59,7 +68,7 @@ It was hard to tell what is happening with the bulk of the data for many of the 
 Boxplt_adjust_view <- function(y, dat, x){
   stopifnot(require(tidyverse))
   x <- enquo(x); y <- enquo(y)
-  smldat <- dat %>% select(!!x, !!y) #x is always column 1 now.
+  smldat <- dat %>% dplyr::select(!!x, !!y) #x is always column 1 now.
   p0 <- ggplot(smldat, aes(x = !!x, y = !!y)) +
           geom_boxplot()
   ylim1 <- boxplot.stats(smldat[[2]])$stats[c(1,5)]  %>%
@@ -69,17 +78,20 @@ Boxplt_adjust_view <- function(y, dat, x){
     coord_cartesian(ylim = ylim1)
 }
 
-TBP <- dat %>% select(-Row, -Column, -S, -M, -starts_with('Focus'), -DNA_Area, -Ab_Int_Nuc)
+TBP <- dat %>% dplyr::select(-Row, -Column, -S, -M, -starts_with('Focus'), -DNA_Area, -Ab_Int_Nuc)
 measures <- syms(names(TBP)[!grepl(pattern = "Plate", x = names(TBP))])
 plts <- lapply(X = measures, FUN = Boxplt_adjust_view, TBP, Plate)
 
-marrangeGrob(plts, nrow=2, ncol=2)
+p <- marrangeGrob(plts, nrow=2, ncol=2)
+ggsave('../figures/per_plate_zoom.pdf', p)
+p
 ```
 
 Looks pretty good to me, I don't think there is any difference in the plates that needs to be corrected. Most likely it's been corrected for this already. If anything perhaps a mean correction.
 
 Look at the distributions separated by mutant and non-mutant.
 ```{r univariate_dist, include=FALSE, eval=FALSE}
+# Plots the univariate density comparisons, without zooming.
 TBP <- dat %>% mutate(mutant = Row > 3)
 measures <- syms(names(TBP)[!grepl(pattern = '(Plate)|(mutant)', x = names(TBP))])
 plts <- lapply(X = measures, FUN = function(x, dat, y){
@@ -103,8 +115,8 @@ Again I rescaled the viewing window where the x axis is zoomed to contain from t
 density_adj_view <- function(x, dat, grp, percentiles){
   stopifnot(require(tidyverse))
   x <- enquo(x); grp <- enquo(grp)
-  smldat <- dat %>% select(!!x, !!grp)
-  xlim <- smldat %>% select(!!x) %>%
+  smldat <- dat %>% dplyr::select(!!x, !!grp)
+  xlim <- smldat %>% dplyr::select(!!x) %>%
     summarise_all(list(~quantile(., probs = 0.01),
                        ~quantile(., probs = 0.99)), na.rm = T) %>%
     unlist(.[1,]) %>% {. + c(-0.05, 0.05)*diff(.)}
@@ -119,9 +131,92 @@ TBP <- dat %>% mutate(mutant = Row > 3)
 measures <- syms(names(TBP)[!grepl(pattern = '(Plate)|(mutant)', x = names(TBP))])
 plts <- lapply(X = measures, FUN = density_adj_view, TBP, mutant, c(0.01, 0.99))
 
-marrangeGrob(plts, nrow=2, ncol=2)
+p <- marrangeGrob(plts, nrow=2, ncol=2)
+ggsave('../figures/uni_density.pdf', p)
+p
+```
+
+Now start looking at the joint distributions in a pair wise manner. Only a few of the pairs are plotted, guessing at which variables are the best to plot since all pairs is going to be a lot of joint_distributions. If wanted, more can be plotted later on.
+
+Prior to plotting the joing_distributions the means were subtracted from each variable to "center" the data about zero.
+
+```{r density2d}
+
+density2d <- function(x, y, dat, grp){
+  stopifnot(require(MASS) & require(tidyverse))
+  x <- enquo(x); y <- enquo(y); grp <- enquo(grp)
+  smldat <- dat %>% dplyr::select(!!x, !!y, !!grp) %>% rmv_outliers(5)
+  
+ ggplot(smldat, aes(x = !!x, y = !!y)) +
+   stat_density2d(aes(fill = ..level..), geom = 'polygon', colour = 'white') + 
+   facet_wrap(vars(!!grp)) +
+   scale_fill_distiller(palette = "Blues", direction = 1)
+}
+
+
+center <- function(x){x - mean(x, na.rm = T)}
+centeredDat <- dat %>% dplyr::mutate(mutant = Row > 3) %>% 
+  dplyr::mutate_if(is.numeric, list(~center))
+
+measures_char <- names(centeredDat)[grepl(pattern = '(Major|Minor|Solid)', x = names(centeredDat))]
+combinations <- expand.grid(measures_char, measures_char, stringsAsFactors = F) %>% 
+  sort2cols(Var1, Var2) %>% dplyr::filter(Var1 != Var2) %>% distinct()
+
+plts <- mapply(FUN = density2d, syms(combinations[[1]]), syms(combinations[[2]]), 
+               MoreArgs = list(centeredDat, sym("mutant")),
+               SIMPLIFY = F)
+
+marrangeGrob(plts, nrow = 2, ncol=2)
 
 ```
 
+Zero center all the data to remove differences in mean, then plotting the difference in joint probability distributions separated by mutant and non-mutant i.e. (joint density mutant)-(joint density non-mutant).
 
+```{r diff_density2d}
+
+
+# Assumes grp is a logical vector, might be interesting to try and extend this 
+# function to take more than two groups later. Though it will take some thinking 
+# about how to do the subtraction then.
+diffDensity2d <- function(x, y, dat, grp){
+  stopifnot(require(MASS) & require(tidyverse))
+  x <- enquo(x); y <- enquo(y); grp <- enquo(grp)
+  smldat <- dat %>% dplyr::select(!!x, !!y, !!grp) %>% rmv_outliers(5)
+  
+  xlims <- range(dplyr::select(smldat, !!x)[[1]])
+  ylims <- range(dplyr::select(smldat, !!y)[[1]])
+  # Easy to put this in a for loop, but what order does the subtraction go in, 
+  # in the 2 group case it is easy since they are just opposites so order 
+  # doesn't really matter, but if there are more than 2 groups the 
+  # subtraction order may be very important...
+  den1 <- smldat %>% dplyr::filter(!!grp == T) %>%
+    {MASS::kde2d(.[[1]], .[[2]], n = 100, lims = c(xlims, ylims))}
+  den2 <- smldat %>% dplyr::filter(!!grp == F) %>%
+    {MASS::kde2d(.[[1]], .[[2]], n = 100, lims = c(xlims, ylims))}
+  
+  colnames(den1$z) <- den1$y
+  den <- as.tibble(den1$z - den2$z)
+  dendiff <- den %>% mutate(x = den1$x) %>% gather('y', 'density', -x) %>% 
+    mutate_all(as.numeric) %>% rename(!!x := x, !!y := y)
+  
+  density2d_my_style(dendiff, x, y, quo(density))
+}
+
+center <- function(x){x - mean(x, na.rm = T)}
+centeredDat <- dat %>% dplyr::mutate(mutant = Row > 3) %>% 
+  dplyr::mutate_if(is.numeric, list(~center))
+
+# Only keeping a few of the variables, I don't want to look at ~500 plots...
+measures_char <- names(centeredDat)[grepl(pattern = '(Major|Minor|Solid|Cent|[NC]Area)', x = names(centeredDat))]
+combinations <- expand.grid(measures_char, measures_char, stringsAsFactors = F) %>% 
+  sort2cols(Var1, Var2) %>% dplyr::filter(Var1 != Var2) %>% distinct()
+
+plts <- mapply(FUN = diffDensity2d, syms(combinations[[1]]), syms(combinations[[2]]), 
+               MoreArgs = list(centeredDat, sym("mutant")),
+               SIMPLIFY = F)
+
+p <- marrangeGrob(plts, nrow=2, ncol=2)
+ggsave('../figures/joint_density_diff.pdf', p)
+p
+```
 
