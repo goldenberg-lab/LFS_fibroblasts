@@ -1,4 +1,4 @@
-# read and join all four plates together.
+# Data importing and data cleaning functions.
 
 # old speed comparison in this comment block.
 #####
@@ -36,9 +36,18 @@
 # import_data_dt() 6.540901 7.351698 7.706112 7.799534 8.009514 9.034379    10
 #####
 
-# Import the original Datasets as received from Miriam, merging the 4 files into
-# a single table.
-# path : character string, path to folder containing the data files.
+#' Import fibroblast Data
+#'
+#' Import the original Datasets as received from Miriam, merging the 4 files into
+#' a single table.
+#'
+#' @param path a character string, path to folder containing the data files.
+#'
+#' @return Tibble of fibroblast data
+#'
+#' @example import_data()
+#'
+#' @export
 import_data <- function(data_dir = './data/Datasets/'){
   stopifnot(require(tidyverse))
   csvs <- list.files(data_dir) %>%
@@ -47,4 +56,37 @@ import_data <- function(data_dir = './data/Datasets/'){
   lapply(csvs, function(f){ read_csv(f,col_types = cols(.default = col_double())) %>% mutate(Plate = str_extract(f, "Plate_\\d"))}) %>%
     bind_rows(.)
 }
+
+#' Remove perfect correlations
+#'
+#' Check all pairs of numeric cols x,y and if abs(cor(x,y)) == 1, then one of
+#' the columns will be kept and the column will be renamed to: "name(x);name(y)".
+#'
+#' @param dat a tibble of data columns
+#' @param threshold a number which if the absolute value of a correlation is
+#'                  greater than or equal to it then one of the two columns will
+#'                  be removed.
+#'
+#' @return a tibble with the aforementioned changes applied
+#'
+#' @export
+rmv_correlated_cols <- function(dat, threshold = 1){
+  stopifnot(require(tidyverse))
+  source('../Helpers/Sort_rowwise.R')
+  cors <- dat %>% select_if(is.numeric) %>% cor(use = "na.or.complete") %>%
+    as_tibble(rownames = "Var1") %>%
+    gather(key = 'Var2', value = 'Cor', -Var1) %>%
+    filter(Var1 != Var2 & abs(Cor) >= threshold)
+  perfect_cors <- cors %>% sort2cols(Var1, Var2) %>%
+     distinct()
+  rmv_cols <- perfect_cors$Var1
+  rn_cols <- perfect_cors$Var2
+
+  dat %>% select(-one_of(rmv_cols)) %>%
+    rename(!!paste0(rn_cols[[1]], ';', rmv_cols[[1]]) := !!rn_cols[[1]],
+           !!paste0(rn_cols[[2]], ';', rmv_cols[[2]]) := !!rn_cols[[2]])
+}
+
+
+
 

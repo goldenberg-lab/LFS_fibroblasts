@@ -42,7 +42,6 @@ sort2cols <- function(tib, col1, col2){
 
 }
 
-# Work in progress
 #' Plot 2d density
 #'
 #' Plots the joint distribution estimate given a tibble of two variables and the
@@ -64,6 +63,9 @@ density2d_my_style <- function(dens, xcol, ycol, denscol){
   ggplot(dens, aes(x = !!xcol, y = !!ycol, z=!!denscol, fill=!!denscol)) +
     geom_tile() +
     stat_contour(aes(colour=..level..), binwidth=0.001) +
+    # bug where the binwidth for the contour lines is so small compared to the
+    # range of values, there are many many contour lines which is causing the
+    # memory overload.
     scale_fill_gradient2(low="red",mid="white", high="blue", midpoint=0) +
     scale_colour_gradient2(low=scales::muted("red"), mid="white", high=scales::muted("blue"), midpoint=0) +
     guides(colour=FALSE)

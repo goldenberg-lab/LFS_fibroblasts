@@ -1,0 +1,2 @@
+subset_features = CInt_3, NInt_3
+num_interaction = 0

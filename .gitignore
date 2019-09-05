@@ -6,6 +6,17 @@
 
 data/
 figures/
+ga2m/ga2m_results/*
+objects/*
+gdrive/*
+cvxr_docs/*
+scripts/fromErik/*
+saved_images/*
+notebooks/*
 
 *.Rproj
 *.html
+*.RData
+*.csv
+*.pdf
+*.png
