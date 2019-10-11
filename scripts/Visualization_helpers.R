@@ -59,10 +59,10 @@ sort2cols <- function(tib, col1, col2){
 #'
 #' @export
 #'
-density2d_my_style <- function(dens, xcol, ycol, denscol){
+density2d_my_style <- function(dens, xcol, ycol, denscol, binwidth=0.001){
   ggplot(dens, aes(x = !!xcol, y = !!ycol, z=!!denscol, fill=!!denscol)) +
     geom_tile() +
-    stat_contour(aes(colour=..level..), binwidth=0.001) +
+    stat_contour(aes(colour=..level..), binwidth = binwidth) +
     # bug where the binwidth for the contour lines is so small compared to the
     # range of values, there are many many contour lines which is causing the
     # memory overload.
