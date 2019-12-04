@@ -37,8 +37,8 @@ if( sys.nframe() == 0){
   )
   argv <- parse_args(OptionParser(option_list=option_list))
   # Example arguments below, use if running interactively.
-  # argv <- list(SRC = "/media/carbondrive/Miriam\ Data/Zeiss\ Widefield/20180709_LFSplate1/",
-  #            PERC = "0.1", DEST = "/data/Jaryd/R/LFS_fibroblasts/sample_images/Plate1",
+  # argv <- list(SRC = "R:/Miriam\ Data/Zeiss\ Widefield/20180709_LFSplate1/",
+  #            PERC = "0.01", DEST = "C:/Users/Jaryd Hunter/Projects/LFS_fibroblasts/ext_small_sample_data",
   #            GRP = '.*?-([B-G][0-9]{1,2}).+(M[0-9]+)')
   print(argv)
   if (length(argv) < 3) {

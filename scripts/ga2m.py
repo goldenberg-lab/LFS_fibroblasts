@@ -10,6 +10,7 @@ import glob
 
 
 # Helper functions below, figure out how to make your own package to clean this up some time later.
+# Default folder only works on Ubuntu machine, just a friendly reminder of the obvious...
 def get_data(data_dir='/data/Jaryd/R/LFS_fibroblasts/data/Datasets', ext='.csv'):
     """
     Import and concatenate a set of files with the same extension from the folder data_dir, defaults are set for the
@@ -23,7 +24,10 @@ def get_data(data_dir='/data/Jaryd/R/LFS_fibroblasts/data/Datasets', ext='.csv')
 
 
 seed(7)
+# Ubuntu
 dat = get_data()
+# Windows
+#dat = get_data(data_dir=)
 
 # Read model configuration file, which will dictate what model to fit.
 config = open(sys.argv[1], 'r')
@@ -40,7 +44,8 @@ res_dir = '/data/Jaryd/R/LFS_fibroblasts/ga2m/ga2m_results/' + \
 os.makedirs(res_dir)
 
 # Label mutant observations
-dat['mutant'] = dat.Row >= 3
+#dat['mutant'] = dat.Row >= 3
+dat['mutant'] = dat.Column >= 3
 # Drop labelling columns and shuffle data order.
 dat = dat.drop(columns=['Row', 'Column', 'Time', 'S', 'M', 'FocusScore3', 'FocusScore4', 'FocusScore5', 'Centroid_1', 'Centroid_2', 'Orientation']).sample(frac=1)
 
