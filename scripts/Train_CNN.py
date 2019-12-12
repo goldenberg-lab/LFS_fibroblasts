@@ -13,6 +13,57 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import glob
+import sys
+
+
+# TODO: Test this class, did the inheritance work. There could be other weirdness around the list of all
+#  possible classes, since I'm essentially overwritting the given class at the point when the item is being retrieved.
+#  For example, the train_loader.dataset.classes is listing all the rotations since it is still generated in the default
+#  manner.
+class LFSDataset(torchvision.datasets.ImageFolder):
+
+    def _find_classes(self, dir):
+        """
+        Finds the class folders in a dataset.
+
+        Args:
+            dir (string): Root directory path.
+
+        Returns:
+            tuple: (classes, class_to_idx) where classes are relative to (dir), and class_to_idx is a dictionary.
+
+        """
+        if sys.version_info >= (3, 5):
+            # Faster and available in Python 3.5 and above
+            dirs = [d.name for d in os.scandir(dir) if d.is_dir()]
+        else:
+            dirs = [d for d in os.listdir(dir) if os.path.isdir(os.path.join(dir, d))]
+        dirs.sort()
+        class_to_idx = {dirs[i]: i for i in range(len(dirs))}
+
+        classes = ['WT', 'Mutant']
+        return classes, class_to_idx
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target = self.samples[index]
+
+        # Overwrite the class labels.
+        target = os.path.basename(os.path.dirname(path))[0] in ['B', 'C']
+
+        sample = self.loader(path)
+        if self.transform is not None:
+            sample = self.transform(sample)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return sample, target
 
 
 def imshow(image):
@@ -22,25 +73,26 @@ def imshow(image):
     plt.show()
 
 
-def lfs_fibro_loader(data_path):
-    # train_dataset = torchvision.datasets.ImageFolder(
-    #     root=data_path,
-    #     transform=torchvision.transforms.ToTensor()
-    # )
-    # loader = torch.utils.data.DataLoader(
-    #     train_dataset,
-    #     batch_size=64,
-    #     # Note from pytorch tutorial: If running on Windows and you get a BrokenPipeError, try setting
-    #     # the num_worker of torch.utils.data.DataLoader() to 0.
-    #     num_workers=0,
-    #     shuffle=True
-    # )
-    if data_path[-1] != '/':
-        data_path = data_path + '/'
-
-    # TODO: change the loader here to return a list of tuples where the first element is the path to the image, the \
-    #  second element is the label ('WT', 'LFS')
-    loader = [f for f in glob.iglob(data_path + '**/*', recursive=True) if os.path.isfile(f)]
+def Data_loader(data_path):
+    train_dataset = LFSDataset(
+        root=data_path,
+        transform=torchvision.transforms.ToTensor()
+    )
+    loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=64,
+        # Note from pytorch tutorial: If running on Windows and you get a BrokenPipeError, try setting
+        # the num_worker of torch.utils.data.DataLoader() to 0.
+        num_workers=0,
+        shuffle=True
+    )
+    # if data_path[-1] != '/':
+    #     data_path = data_path + '/'
+    #
+    # paths = [f for f in glob.iglob(data_path + '**/*', recursive=True) if os.path.isfile(f)]
+    # loader = [(None, None)]*len(paths)
+    # for j in range(len(paths)):
+    #     loader[j] = (paths[j], os.path.basename(os.path.dirname(paths[j]))[0] in ['B', 'C'])
     return loader
 
 
@@ -77,7 +129,7 @@ if __name__ == '__main__':
         [transforms.ToTensor(),
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    train_loader = lfs_fibro_loader(args.source)
+    train_loader = Data_loader(args.source)
 
     # test_set = torchvision.datasets.CIFAR10(root='./data', train=False,
     #                                        download=True, transform=transform)

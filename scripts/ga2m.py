@@ -44,8 +44,8 @@ res_dir = '/data/Jaryd/R/LFS_fibroblasts/ga2m/ga2m_results/' + \
 os.makedirs(res_dir)
 
 # Label mutant observations
-#dat['mutant'] = dat.Row >= 3
-dat['mutant'] = dat.Column >= 3
+dat['mutant'] = dat.Row >= 3
+#dat['mutant'] = dat.Column >= 3
 # Drop labelling columns and shuffle data order.
 dat = dat.drop(columns=['Row', 'Column', 'Time', 'S', 'M', 'FocusScore3', 'FocusScore4', 'FocusScore5', 'Centroid_1', 'Centroid_2', 'Orientation']).sample(frac=1)
 
