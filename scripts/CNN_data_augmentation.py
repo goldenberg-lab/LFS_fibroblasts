@@ -115,8 +115,7 @@ if __name__ == '__main__':
 
         for im_num in range(len(padded_single_channel[0])):
             for ch_num in range(len(padded_single_channel)):
-                for theta in np.arange(0, 360, 6
-                0):
+                for theta in np.arange(0, 360, 60):
                     rotated = imutils.rotate(padded_single_channel[ch_num][im_num], theta)
                     # if max_dims[1] - 100 < size[0] < max_dims[1] or max_dims[0] - 100 < size[1] < max_dims[0]:
                     #     cv.imshow("Rotated (Problematic)", rotated)
@@ -130,21 +129,3 @@ if __name__ == '__main__':
                     os.makedirs(os.path.dirname(new_path), exist_ok=True)
                     write_img(rotated, new_path)
 
-        # Standardize image size
-        # for f in fs:
-        #     img = read_img(f)
-        #     img_name = os.path.basename(os.path.dirname(f))
-        #
-        #     os.makedirs(os.path.dirname(os.path.join(args.destination, "standard_size", os.path.basename(f))), exist_ok=True)
-        #     write_img(new_img, args.destination + "standard_size/" + os.path.basename(f))
-        #
-        #     # Rotate images
-        #     for theta in np.arange(15, 360, 15):
-        #         rotated = imutils.rotate(new_img, theta)
-        #         # if max_dims[1] - 100 < size[0] < max_dims[1] or max_dims[0] - 100 < size[1] < max_dims[0]:
-        #         #     cv.imshow("Rotated (Problematic)", rotated)
-        #         #     cv.waitKey(0)
-        #         #     cv.destroyAllWindows()
-        #         os.makedirs(os.path.dirname(os.path.join(args.destination, "rotated", str(theta), img_name, os.path.basename(f))),
-        #                     exist_ok=True)
-        #         write_img(rotated, os.path.join(args.destination, "rotated", str(theta),  img_name, os.path.basename(f)))
