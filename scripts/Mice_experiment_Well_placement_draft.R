@@ -112,6 +112,7 @@ library(dgof)
 num_run <- 1000
 lst_pvals <- vector('list', length = num_run)
 counts <- vector('list', length=num_run)
+True_stats <- vector('list', length = num_run)
 
 for(i in 1:num_run){
   samp_df <- assign_well_groups(group_names=group_names, group_sizes=group_sizes,
@@ -126,6 +127,8 @@ for(i in 1:num_run){
 
   lst_pvals[[i]] <- vector('numeric', length = length(unique(counts[[i]]$group)))
   names(lst_pvals[[i]]) <- unique(counts[[i]]$group)
+  True_stats[[i]] <- vector('numeric', length = length(unique(counts[[i]]$group)))
+  names(True_stats[[i]]) <- unique(counts[[i]]$group)
   for(g in unique(counts[[i]]$group)){
     #TODO: this test is not correct, the ecdf is testing a uniform distribution
     # over the values of 1:6. Need to come up with a distribution for what the
@@ -133,12 +136,20 @@ for(i in 1:num_run){
     lst_pvals[[i]][g] <- ks.test(unlist(mapply(rep, 1:6, counts[[i]] %>%
                                                  filter(group == g) %>% .$n %>%
                                                  .[1:6] %>% replace_na(0))),
-                        y = ecdf(1:6))$p.value
-  }
+                        y = ecdf(1:6))$statistic
 
+    True_stats[[i]][g] <- ks.test(sample(1:6,
+                                 size=length(unlist(
+                                   mapply(rep, 1:6, counts[[i]] %>%
+                                            filter(group == g) %>% .$n %>%
+                                            .[1:6] %>% replace_na(0)))),
+                                 replace = T),
+                          y = ecdf(1:6))$p.value
+  }
   print(i)
 }
 
+t.test(unlist(lst_pvals), unlist(True_stats))
 
 
 
