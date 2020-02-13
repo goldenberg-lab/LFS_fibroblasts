@@ -2,7 +2,7 @@ library(optparse)
 library(stringr)
 
 # This script will take a given path, and randomly select a given percentage of
-# the files in that location, and create copies in a new given location.\
+# the files in that location, and move them to a new location.\
 #
 # --SRC: A path which is the source folder to read all files in from.
 # --PERC: A numeric value greater than zero and less or equal to 1.
@@ -94,6 +94,18 @@ if( sys.nframe() == 0){
   if(!is.null(argv$GRP)){
     subset <- grep(paste(subset,collapse="|"), all_files, value=TRUE)
   }
-
-  sapply(subset, function(f) file.copy(f, paste0(argv[3], '/', basename(f))))
+  
+  #debugging log
+  fileConn<-file("D:/Jaryd/LFS/subset_log.txt")
+  writeLines(subset, fileConn)
+  close(fileConn)
+  
+  copy_file_tree <- function(SRC_path, DEST_path){
+    if(!dir.exists(dirname(DEST_path))){
+      dir.create(dirname(DEST_path), recursive = T)
+    }
+    file.copy(SRC_path, DEST_path)
+  }
+  
+  sapply(subset, function(f) copy_file_tree(f, paste0(argv$DEST, strsplit(f, argv$SRC)[[1]][2])))
 }

@@ -159,7 +159,7 @@ class LFSDataset(Dataset):
     two target classes WT, and LFS.
     """
 
-    def __init__(self, root_dir, transform=None, max_dims=None):
+    def __init__(self, root_dir, transform=None, max_dims=None, exclude_files=None):
         """
         Initialize LFS dataset, reads each folder in root_dir as a class, each subfolder of that is a grouping of images
         which are different channels for one sample. Checks all leaf directories (images) have the same number of
@@ -171,6 +171,7 @@ class LFSDataset(Dataset):
                             Calculating the largest size of any image in the set can take a long time, so if running
                             multiple times it can be best to calculate before and pass in. It will only calculate the
                             largest image if max_dims is None.
+        :param exclude_files: string, regex pattern indicating which leaf directories in root_dir to be excluded.
         """
         def _check_len(f):
             """
@@ -203,8 +204,16 @@ class LFSDataset(Dataset):
         self.class_to_idx = {self.classes[i]: i for i in range(len(self.classes))}
         self.root_dir = root_dir
         self.transform = transform
-        self.samples = [(r, _check_len(f), re.findall(r"[^\\/]+", r.split(root_dir)[1])[0])
-                        for r, d, f in os.walk(root_dir) if len(f) > 0]
+
+        if exclude_files:
+            self.exclude = re.compile(re.escape(exclude_files))
+            self.samples = [(r, _check_len(f), re.findall(r"[^\\/]+", r.split(root_dir)[1])[0])
+                            for r, d, f in os.walk(root_dir) if len(f) > 0 and not self.exclude.search(r)]
+        else:
+            self.exclude = exclude_files
+            self.samples = [(r, _check_len(f), re.findall(r"[^\\/]+", r.split(root_dir)[1])[0])
+                            for r, d, f in os.walk(root_dir) if len(f) > 0]
+
         self.num_channel = _check_len.num_chan
         self.len = sum(_check_len.lens) // self.num_channel
         if max_dims is None:
@@ -236,6 +245,8 @@ if __name__ == '__main__':
     parser.add_argument("-I", "--image_size", nargs=3, type=int, help="dimension of largest image in dataset, "
                                                                       "first dimension is number of channels, "
                                                                       "second and third are width and Height")
+    parser.add_argument("-e", "--exclude", help="regex pattern to match directories which should be excluded in the "
+                                                "dataset.")
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -244,7 +255,8 @@ if __name__ == '__main__':
         [transforms.ToTensor(),
          transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    dataset = LFSDataset(root_dir=args.source, transform=torchvision.transforms.ToTensor(), max_dims=args.image_size[1:])
+    dataset = LFSDataset(root_dir=args.source, transform=torchvision.transforms.ToTensor(),
+                         max_dims=args.image_size[1:], exclude_files=args.exclude)
 
     train_data, val_data, test_data = torch.utils.data.random_split(dataset,
                                                                     [floor(0.8*len(dataset)), floor(0.1*len(dataset)),
@@ -277,8 +289,6 @@ if __name__ == '__main__':
             optimizer.zero_grad()
 
             # forward + backward + optimize
-            # outputs is not equalling the labels size, seems like it isn't returning an estimate for each sample in the
-            # batch need to figure out why?
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
@@ -286,10 +296,9 @@ if __name__ == '__main__':
 
             # print statistics
             running_loss += loss.item()
-            # if i % 10 == 9:  # print every 2000 mini-batches
-            print('[%d, %5d] loss: %.3f' %
-                  (epoch + 1, i + 1, running_loss))
-            running_loss = 0.0
+            if i % 10 == 9:  # print every 10 mini-batches
+                print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss/10))
+                running_loss = 0.0
 
     print('Finished Training')
 
