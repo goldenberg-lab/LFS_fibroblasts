@@ -247,6 +247,7 @@ if __name__ == '__main__':
                                                                       "second and third are width and Height")
     parser.add_argument("-e", "--exclude", help="regex pattern to match directories which should be excluded in the "
                                                 "dataset.")
+    parser.add_argument("-l", "--log", help="path to file to write loss at each epoch.")
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -298,7 +299,11 @@ if __name__ == '__main__':
             running_loss += loss.item()
             if i % 10 == 9:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss/10))
+                log = open(args.log, "a")
+                log.write('[%d, %5d] loss: %.3f\n' % (epoch + 1, i + 1, running_loss/10))
+                log.close()
                 running_loss = 0.0
+
 
     print('Finished Training')
 
