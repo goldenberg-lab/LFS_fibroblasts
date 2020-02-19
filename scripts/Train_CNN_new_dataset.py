@@ -268,7 +268,7 @@ if __name__ == '__main__':
         # TODO: increase num_workers on Linux
         train_data,
         batch_size=8,
-        num_workers=0,
+        num_workers=4,
         shuffle=True
     )
 
