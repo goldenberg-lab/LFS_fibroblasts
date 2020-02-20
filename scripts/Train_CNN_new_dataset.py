@@ -23,6 +23,8 @@ import re
 import warnings as w
 import imutils
 
+# added for timing in the log
+from datetime import datetime
 
 def imshow(image):
     image = image / 2 + 0.5     # unnormalize
@@ -39,18 +41,23 @@ class Net(nn.Module):
         :param kernel_size: int, size of the kernel for the convolution layers.
         """
         super(Net, self).__init__()
-        self.stride = 1
+        self.stride = 2
         self.padding = 0
+        self.pool_size = 4
+        self.pool_stride = 4
+        self.pool_dilation = 1
 
         self.conv1 = nn.Conv2d(in_size[0], 6, kernel_size, stride=self.stride, padding=self.padding)
         conv1_outsize = (floor((in_size[1] - kernel_size + 2*self.padding)/self.stride + 1),
                          floor((in_size[2] - kernel_size + 2*self.padding)/self.stride + 1))
-        self.pool = nn.MaxPool2d(2, 2)
-        pool1_outsize = (floor((conv1_outsize[0] - 2)/2 + 1), floor((conv1_outsize[1] - 2)/2 + 1))
+        self.pool = nn.MaxPool2d(self.pool_size, stride=self.pool_stride)
+        pool1_outsize = (floor((conv1_outsize[0] - self.pool_dilation*(self.pool_size - 1))/self.pool_stride + 1),
+                         floor((conv1_outsize[1] - self.pool_dilation*(self.pool_size - 1))/self.pool_stride + 1))
         self.conv2 = nn.Conv2d(6, 16, kernel_size, stride=self.stride, padding=self.padding)
         conv2_outsize = (floor((pool1_outsize[0] - kernel_size + 2*self.padding)/self.stride + 1),
                          floor((pool1_outsize[1] - kernel_size + 2*self.padding)/self.stride + 1))
-        pool2_outsize = (floor((conv2_outsize[0] - 2)/2 + 1), floor((conv2_outsize[1] - 2)/2 + 1))
+        pool2_outsize = (floor((conv2_outsize[0] - self.pool_dilation*(self.pool_size - 1))/self.pool_stride + 1),
+                         floor((conv2_outsize[1] - self.pool_dilation*(self.pool_size - 1))/self.pool_stride + 1))
         self.fc1 = nn.Linear(16 * np.prod(pool2_outsize), 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 2)
@@ -239,6 +246,15 @@ class LFSDataset(Dataset):
 
 
 if __name__ == '__main__':
+    import cProfile
+
+    # if check avoids hackery when not profiling
+    # Optional; hackery *seems* to work fine even when not profiling, it's just wasteful
+    if sys.modules['__main__'].__file__ == cProfile.__file__:
+        import Train_CNN_new_dataset as mymodule
+        globals().update(vars(mymodule))  # Replaces current contents with newly imported stuff
+        sys.modules['__main__'] = mymodule  # Ensures pickle lookups on __main__ find matching version
+
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--source", help="path of where to read input images")
     parser.add_argument("-m", "--model", help="path of where to save the trained model")
@@ -282,6 +298,11 @@ if __name__ == '__main__':
     for epoch in range(2):  # loop over the dataset multiple times
 
         running_loss = 0.0
+        log = open(args.log, "a")
+        now = datetime.now()
+        s1 = now.strftime("%m/%d/%Y, %H:%M:%S")
+        log.write(('starting epoch, %d, time =' % (epoch + 1)) + s1 + '\n')
+        log.close()
         for i, data in enumerate(train_loader, 0):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data[0].to(device, dtype=torch.float32), data[1].to(device, dtype=torch.long)
@@ -300,12 +321,14 @@ if __name__ == '__main__':
             if i % 10 == 9:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss/10))
                 log = open(args.log, "a")
-                log.write('[%d, %5d] loss: %.3f\n' % (epoch + 1, i + 1, running_loss/10))
+                now = datetime.now()
+                s1 = now.strftime("%m/%d/%Y, %H:%M:%S")
+                log.write(('[%d, %5d] loss: %.3f'% (epoch + 1, i + 1, running_loss/10)) + s1 + '\n')
                 log.close()
                 running_loss = 0.0
 
 
     print('Finished Training')
 
-    PATH = args.model
+    PATH = args.model + "models/" + datetime.now().strftime("d%d_m%m_y%Y_H%H_M%M_S%S")
     torch.save(net.state_dict(), PATH)
