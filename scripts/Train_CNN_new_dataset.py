@@ -326,9 +326,7 @@ if __name__ == '__main__':
                 log.write(('[%d, %5d] loss: %.3f'% (epoch + 1, i + 1, running_loss/10)) + s1 + '\n')
                 log.close()
                 running_loss = 0.0
+        PATH = args.model + "models/" + "epoch_" + str(epoch + 1) + "_" + \
+               datetime.now().strftime("d%d_m%m_y%Y_H%H_M%M_S%S")
+        torch.save(net.state_dict(), PATH)
 
-
-    print('Finished Training')
-
-    PATH = args.model + "models/" + datetime.now().strftime("d%d_m%m_y%Y_H%H_M%M_S%S")
-    torch.save(net.state_dict(), PATH)
