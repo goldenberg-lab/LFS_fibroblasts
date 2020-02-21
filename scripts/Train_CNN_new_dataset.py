@@ -291,6 +291,7 @@ if __name__ == '__main__':
     classes = ('WT', 'Mutant')
 
     net = Net(in_size=args.image_size)
+    net.to(device)
 
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
