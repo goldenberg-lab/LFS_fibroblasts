@@ -22,6 +22,7 @@ import sys
 import re
 import warnings as w
 import imutils
+from sklearn.metrics import roc_auc_score
 
 # added for timing in the log
 from datetime import datetime
@@ -275,15 +276,18 @@ if __name__ == '__main__':
     dataset = LFSDataset(root_dir=args.source, transform=torchvision.transforms.ToTensor(),
                          max_dims=args.image_size[1:], exclude_files=args.exclude)
 
-    train_data, val_data, test_data = torch.utils.data.random_split(dataset,
-                                                                    [floor(0.8*len(dataset)), floor(0.1*len(dataset)),
-                                                                     len(dataset) - floor(0.8*len(dataset)) -
-                                                                     floor(0.1*len(dataset))])
+    train_data, val_data = torch.utils.data.random_split(dataset, [floor(0.8*len(dataset)),
+                                                                   len(dataset) - floor(0.8*len(dataset))])
 
     train_loader = torch.utils.data.DataLoader(
-        # TODO: increase num_workers on Linux
         train_data,
-        batch_size=8,
+        batch_size=16,
+        num_workers=4,
+        shuffle=True
+    )
+    val_loader = torch.utils.data.DataLoader(
+        val_data,
+        batch_size=16,
         num_workers=4,
         shuffle=True
     )
@@ -322,12 +326,31 @@ if __name__ == '__main__':
             if i % 10 == 9:  # print every 10 mini-batches
                 print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss/10))
                 log = open(args.log, "a")
-                now = datetime.now()
-                s1 = now.strftime("%m/%d/%Y, %H:%M:%S")
                 log.write(('[%d, %5d] loss: %.3f'% (epoch + 1, i + 1, running_loss/10)) + s1 + '\n')
                 log.close()
                 running_loss = 0.0
-        PATH = args.model + "epoch_" + str(epoch + 1) + "_" + \
-               datetime.now().strftime("d%d_m%m_y%Y_H%H_M%M_S%S")
+        PATH = args.model + "epoch_" + str(epoch + 1) + "_" + datetime.now().strftime("d%d_m%m_y%Y_H%H_M%M_S%S")
         torch.save(net.state_dict(), PATH)
 
+        # Get validation accuracy for the model post an epoch.
+        correct = 0
+        total = 0
+        scores_1 = []  # score for the class number 0
+        actual = []  # actual label
+        m = nn.LogSoftmax(dim=1)
+        with torch.no_grad():
+            for data in val_loader:
+                images, labels = data[0].to(device, dtype=torch.float32), data[1].to(device, dtype=torch.long)
+                outputs = net(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                scores_1.append(torch.exp(m(outputs))[:, 1])
+                actual.append(labels)
+
+        auc = roc_auc_score(torch.cat(actual), torch.cat(scores_1))
+
+        print('AUC, %1.4f after epoch %d' % (auc, epoch))
+        log = open(args.log, "a")
+        log.write(('AUC, %1.4f after epoch %d' % (auc, epoch + 1)))
+        log.close()
