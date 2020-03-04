@@ -340,7 +340,7 @@ if __name__ == '__main__':
         m = nn.LogSoftmax(dim=1)
         with torch.no_grad():
             for data in val_loader:
-                images, labels = data[0], data[1]
+                images, labels = data[0].to(device, dtype=torch.float32), data[1].to(device, dtype=torch.long)
                 outputs = net(images)
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
@@ -348,7 +348,7 @@ if __name__ == '__main__':
                 scores_1.append(torch.exp(m(outputs))[:, 1])
                 actual.append(labels)
 
-        auc = roc_auc_score(torch.cat(actual), torch.cat(scores_1))
+        auc = roc_auc_score(torch.cat(actual).cpu(), torch.cat(scores_1).cpu())
 
         print('AUC, %1.4f after epoch %d' % (auc, epoch))
         log = open(args.log, "a")
