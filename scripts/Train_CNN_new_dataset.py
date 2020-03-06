@@ -27,6 +27,7 @@ from sklearn.metrics import roc_auc_score
 # added for timing in the log
 from datetime import datetime
 
+
 def imshow(image):
     image = image / 2 + 0.5     # unnormalize
     npimg = image.numpy()
@@ -323,13 +324,14 @@ if __name__ == '__main__':
 
             # print statistics
             running_loss += loss.item()
-            if i % 10 == 9:  # print every 10 mini-batches
-                print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss/10))
+            if i % 1000 == 999:  # print every 1000 mini-batches
+                print('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss/1000))
                 log = open(args.log, "a")
-                log.write(('[%d, %5d] loss: %.3f'% (epoch + 1, i + 1, running_loss/10)) + s1 + '\n')
+                log.write(('[%d, %5d] loss: %.3f' % (epoch + 1, i + 1, running_loss/1000)) + s1 + '\n')
                 log.close()
                 running_loss = 0.0
-        PATH = args.model + "epoch_" + str(epoch + 1) + "_" + datetime.now().strftime("d%d_m%m_y%Y_H%H_M%M_S%S")
+        PATH = ("%s%s_epoch_%d_" % (args.model, args.exclude, epoch + 1)) + datetime.now().strftime("d%d_m%m_y%Y_H%H")
+
         torch.save(net.state_dict(), PATH)
 
         # Get validation accuracy for the model post an epoch.
