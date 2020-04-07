@@ -10,8 +10,8 @@ assign_well_groups <- function(groups, num_columns, num_rows, out_file){
   #' a table of size num_rows by num_colmns in such a way as to have as where
   #' the groups are evenly distributed over the columns, and randomly
   #' distributed across the rows.
-  #' 
-  #' @param groups list. list of character vectors, each vector contains the 
+  #'
+  #' @param groups list. list of character vectors, each vector contains the
   #' labels for all members of a group.
   #' @param num_columns integer. Length one integer vector
   #' @param num_rows integer. Length one integer vector
@@ -36,14 +36,14 @@ assign_well_groups <- function(groups, num_columns, num_rows, out_file){
     }
   }
   for(i in 1:length(all_cols)){
-    # Permute the order of groups in tmp_groups first, this serves the purpose 
+    # Permute the order of groups in tmp_groups first, this serves the purpose
     # of shuffling the order in the column as well.
     tmp_groups <- sample(tmp_groups)
     for(j in 1:length(all_cols[[i]])){
       all_cols[[i]][j] <- tmp_groups[[(j %% length(tmp_groups)) + 1]][1]
       # Remove the added sample from the structure of all samples
       if(length(tmp_groups[[(j %% length(tmp_groups)) + 1]]) > 1){
-        tmp_groups[[(j %% length(tmp_groups)) + 1]] <- 
+        tmp_groups[[(j %% length(tmp_groups)) + 1]] <-
           tmp_groups[[(j %% length(tmp_groups)) + 1]] %>% .[2:length(.)]
       } else{
         tmp_groups <- tmp_groups[-((j %% length(tmp_groups)) + 1)]
@@ -73,7 +73,7 @@ assign_well_groups <- function(groups, num_columns, num_rows, out_file){
 # Input Arguments
 #####
 set.seed(6496492L)
-groups <- list(c('FR89', 'FR35', 'FR45', 'FR23'), 
+groups <- list(c('FR89', 'FR35', 'FR45', 'FR23'),
                c('MR19', 'MR83', 'MR41', 'MR21'),
                c('MC36', 'MC51', 'MC16', 'MC68'),
                c('FC25', 'FC13', 'FC14'))
@@ -86,7 +86,7 @@ out_file = '/data/Jaryd/R/LFS_fibroblasts/Mice_plating_group_one.csv'
 #####
 
 set.seed(6496492L)
-df <- assign_well_groups(groups=groups, num_columns=num_columns, 
+df <- assign_well_groups(groups=groups, num_columns=num_columns,
                          num_rows = num_rows, out_file=out_file)
 
 #####
@@ -104,9 +104,8 @@ counts <- vector('list', length=num_run)
 True_stats <- vector('list', length = num_run)
 
 for(i in 1:num_run){
-  samp_df <- assign_well_groups(group_names=group_names, group_sizes=group_sizes,
-                                num_columns=20, num_rows = num_rows,
-                                out_file=NULL)
+  samp_df <- assign_well_groups(groups=groups, num_columns=20,
+                                num_rows = num_rows, out_file=NULL)
 
   counts[[i]] <- samp_df %>% mutate(row = 1:6) %>%
     gather(-row, key="col", value = "group") %>%
